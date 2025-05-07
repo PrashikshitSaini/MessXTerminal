@@ -1,0 +1,12 @@
+{
+  "name": "messxterminal-web",
+  "version": "1.0.0",
+  "description": "Web-based terminal chat application",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+} 

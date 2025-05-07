@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MessxTerminal Web</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="login-screen" class="screen">
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="terminal-title">MessxTerminal Web</span>
+        </div>
+        <div class="terminal-body">
+          <div id="login-content">
+            <div id="name-prompt" class="prompt-section">
+              <span class="prompt">Enter your name:</span>
+              <input type="text" id="user-name" class="terminal-input" />
+            </div>
+            <div id="group-prompt" class="prompt-section hidden">
+              <span class="prompt"
+                >Enter group name (or type 'list' to see existing groups):</span
+              >
+              <input type="text" id="group-name" class="terminal-input" />
+            </div>
+            <div id="group-list" class="hidden">
+              <h3>Existing Groups:</h3>
+              <ul id="groups-list"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-screen" class="screen hidden">
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="terminal-title"
+            >MessxTerminal Web - <span id="current-group"></span
+          ></span>
+        </div>
+        <div class="terminal-body">
+          <div id="chat-content"></div>
+          <div class="input-area">
+            <span id="user-prompt" class="prompt"></span>
+            <input
+              type="text"
+              id="message-input"
+              class="terminal-input"
+              autofocus
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
