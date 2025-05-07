@@ -27,9 +27,33 @@ function showScreen(screen) {
   screen.classList.remove("hidden");
 }
 
+function formatTimestamp(timestamp) {
+  if (!timestamp) return "";
+  const date = timestamp.toDate();
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear().toString().slice(-2);
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `[${day}:${month}:${year} ${hours}:${minutes}]`;
+}
+
 function addMessage(message, type = "normal") {
   const messageDiv = document.createElement("div");
   messageDiv.className = `message ${type}`;
+
+  // For help/command lines, add .command class for styling
+  if (
+    type === "system-message" &&
+    (message.includes("clear -") ||
+      message.includes("@showmess") ||
+      message.includes("@time") ||
+      message.includes("@help") ||
+      message.includes("@exit"))
+  ) {
+    messageDiv.classList.add("command");
+  }
+
   messageDiv.textContent = message;
   chatContent.appendChild(messageDiv);
   chatContent.scrollTop = chatContent.scrollHeight;
@@ -37,26 +61,27 @@ function addMessage(message, type = "normal") {
 
 function getCurrentTime() {
   const now = new Date();
-  const utc = now.toUTCString();
+  const utc = now.toUTCString().split(" ")[4]; // Get just the time part
   const ct = new Date(
     now.toLocaleString("en-US", { timeZone: "America/Chicago" })
-  ).toLocaleString();
+  ).toLocaleTimeString("en-US", { hour12: false });
   const ist = new Date(
     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  ).toLocaleString();
-  return `UTC: ${utc}\nCT: ${ct}\nIST: ${ist}`;
+  ).toLocaleTimeString("en-US", { hour12: false });
+  return `UTC: ${utc} | CT: ${ct} | IST: ${ist}`;
 }
 
 function showHelp() {
-  const helpText = `
-Available commands:
-@clear - Clear the screen
-@showmess - Show last 30 messages
-@time - Show current time in UTC, CT, and IST
-@help - Show this help message
-@exit - Log out
-    `.trim();
-  addMessage(helpText, "system-message");
+  const commands = [
+    "clear - Clear the screen",
+    "@showmess - Show last 30 messages",
+    "@time - Show current time in UTC, CT, and IST",
+    "@help - Show this help message",
+    "@exit - Log out",
+  ];
+
+  addMessage("Available commands:", "system-message");
+  commands.forEach((cmd) => addMessage(cmd, "system-message"));
 }
 
 // Event Handlers
@@ -113,16 +138,23 @@ async function handleGroupInput(e) {
       userPrompt.textContent = `${currentUser}> `;
       messageInput.focus();
 
-      // Set up message listener
+      // --- FIX: Clear chat and only listen for new messages ---
+      chatContent.innerHTML = "";
+      addMessage("use @help to know your hacker powers", "system-message");
+      if (messageListener) messageListener(); // Unsubscribe previous listener if any
+      let latestTimestamp = null;
+      // Listen for new messages only (not history)
       messageListener = groupRef
         .collection("messages")
-        .orderBy("timestamp", "desc")
-        .limit(30)
+        .orderBy("timestamp", "asc")
+        .where("timestamp", ">", new Date())
         .onSnapshot((snapshot) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
               const data = change.doc.data();
-              const message = `[${data.user}] ${data.message}`;
+              const timestamp = formatTimestamp(data.timestamp);
+              const prefix = timestamp ? `${timestamp} ` : "";
+              const message = `${prefix}[${data.user}] ${data.message}`;
               addMessage(message);
             }
           });
@@ -139,12 +171,25 @@ async function handleMessageInput(e) {
     if (!message) return;
 
     // Handle commands
+    if (message.toLowerCase() === "clear") {
+      chatContent.innerHTML = "";
+      return;
+    }
+
     if (message.startsWith("@")) {
       switch (message.toLowerCase()) {
         case "@clear":
           chatContent.innerHTML = "";
           return;
         case "@showmess":
+          addMessage("***** Showing past messages *****", "system-message");
+          if (!window.db || !currentGroup) {
+            addMessage(
+              "Error: Database not ready or group not selected.",
+              "error-message"
+            );
+            return;
+          }
           const messagesSnapshot = await db
             .collection("groups")
             .doc(currentGroup)
@@ -153,11 +198,15 @@ async function handleMessageInput(e) {
             .limit(30)
             .get();
 
+          const messages = [];
           messagesSnapshot.forEach((doc) => {
             const data = doc.data();
-            const message = `[${data.user}] ${data.message}`;
-            addMessage(message);
+            const timestamp = formatTimestamp(data.timestamp);
+            const prefix = timestamp ? `${timestamp} ` : "";
+            messages.unshift(`${prefix}[${data.user}] ${data.message}`);
           });
+          messages.forEach((msg) => addMessage(msg));
+          addMessage("***** End of message history *****", "system-message");
           return;
         case "@time":
           addMessage(getCurrentTime(), "system-message");
@@ -178,6 +227,20 @@ async function handleMessageInput(e) {
           chatContent.innerHTML = "";
           return;
       }
+    }
+
+    // --- FIX: Check for db, currentUser, currentGroup ---
+    if (!window.db) {
+      addMessage("Error: Database not ready.", "error-message");
+      return;
+    }
+    if (!currentUser) {
+      addMessage("Error: User not set.", "error-message");
+      return;
+    }
+    if (!currentGroup) {
+      addMessage("Error: Group not set.", "error-message");
+      return;
     }
 
     // Send message
